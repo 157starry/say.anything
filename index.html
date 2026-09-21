@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Ask Tarry</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,wght@0,500;0,600;1,500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --stone:#E9E6DF;
+    --ink:#24221E;
+    --sage:#3F6259;
+    --bronze:#8B7355;
+    --card:#FBFAF7;
+    --line: rgba(36,34,30,0.12);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background: var(--stone);
+    color: var(--ink);
+    font-family:'IBM Plex Sans', sans-serif;
+    min-height:100vh;
+    padding-bottom: 4rem;
+  }
+  .wrap{max-width:640px;margin:0 auto;padding: 2.5rem 1.25rem 1rem;}
+  header{text-align:center;margin-bottom:2rem;}
+  .eyebrow{font-size:0.85rem;color:var(--sage);font-weight:600;letter-spacing:.02em;margin-bottom:.35rem;}
+  h1{
+    font-family:'Newsreader', serif;
+    font-weight:600;
+    font-size: clamp(2.1rem, 7vw, 3rem);
+    line-height:1.08;
+    margin:0 0 .6rem;
+  }
+  h1 em{font-style:italic;color:var(--sage);}
+  .sub{font-size:1.02rem;color:#5c584f;max-width:46ch;margin:0 auto;}
+
+  .card{
+    background: var(--card);
+    border:1px solid var(--line);
+    border-radius:16px;
+    padding:1.5rem;
+  }
+
+  form.card{margin-bottom:2.75rem;}
+  label{display:block;font-size:.85rem;font-weight:600;color:var(--ink);margin-bottom:.4rem;}
+  .field{margin-bottom:1.1rem;}
+  input[type=text], textarea{
+    width:100%;
+    border:1.5px solid var(--line);
+    border-radius:10px;
+    padding:.75rem .9rem;
+    font-family:'IBM Plex Sans', sans-serif;
+    font-size:1rem;
+    background:#FFFFFF;
+    color: var(--ink);
+  }
+  input[type=text]:focus, textarea:focus{
+    outline:none;
+    border-color: var(--sage);
+  }
+  textarea{resize:vertical;min-height:110px;}
+  .row-bottom{display:flex;justify-content:space-between;align-items:center;gap:1rem;margin-top:.3rem;}
+  .count{font-size:.8rem;color:#8f8b80;}
+  button{
+    appearance:none;border:none;cursor:pointer;
+    background: var(--ink);
+    color: var(--card);
+    font-family:'IBM Plex Sans', sans-serif;
+    font-weight:600;
+    font-size:.95rem;
+    padding:.75rem 1.4rem;
+    border-radius:8px;
+    transition: transform .12s ease, background .12s ease;
+  }
+  button:hover{background: var(--sage);}
+  button:active{transform: scale(0.97);}
+  button:disabled{opacity:.5;cursor:not-allowed;}
+  .toast{
+    margin-top:.9rem;
+    font-size:.92rem;
+    padding:.6rem .8rem;
+    border-radius:8px;
+    display:none;
+  }
+  .toast.show{display:block;}
+  .toast.ok{background:#E7EFEA;color:#2C4A41;}
+  .toast.err{background:#F5E6E2;color:#8A3B26;}
+
+  .wall-heading{
+    font-family:'Newsreader', serif;
+    font-size:1.3rem;
+    font-weight:600;
+    margin: 0 0 1.2rem;
+  }
+  .wall{display:flex;flex-direction:column;gap:1rem;}
+  .entry{
+    background: var(--card);
+    border:1px solid var(--line);
+    border-left: 3px solid var(--bronze);
+    border-radius:10px;
+    padding:1.15rem 1.3rem;
+  }
+  .e-name{
+    display:inline-block;
+    font-size:.76rem;
+    font-weight:600;
+    letter-spacing:.02em;
+    text-transform:uppercase;
+    color: var(--bronze);
+    margin-bottom:.6rem;
+  }
+  .e-q{font-size:1rem;font-weight:500;line-height:1.45;margin:0 0 .55rem;font-family:'Newsreader', serif;}
+  .e-a{font-size:.96rem;line-height:1.55;color:#3d3a34;margin:0;}
+  .empty, .loading{color:#8f8b80;font-size:.92rem;text-align:center;padding:2rem 0;}
+  footer{text-align:center;margin-top:3rem;font-size:.78rem;color:#a19d92;}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="eyebrow">Drop box</div>
+      <h1>Say <em>anything</em></h1>
+      <p class="sub">Ask something, share an update, vent, or just say hi — with your name, a made-up one, or none at all. Everything here was really sent by someone, and what gets answered shows up on the wall below.</p>
+    </header>
+
+    <form class="card" id="askForm">
+      <div class="field">
+        <label for="name">Name (optional)</label>
+        <input type="text" id="name" maxlength="30" placeholder="Anonymous" autocomplete="off" />
+      </div>
+      <div class="field">
+        <label for="question">What's on your mind</label>
+        <textarea id="question" maxlength="500" placeholder="Ask, share, vent, whatever..." required></textarea>
+        <div class="row-bottom">
+          <span class="count" id="charCount">0/500</span>
+        </div>
+      </div>
+      <div class="row-bottom">
+        <span></span>
+        <button type="submit" id="sendBtn">Send</button>
+      </div>
+      <div class="toast" id="toast"></div>
+    </form>
+
+    <h2 class="wall-heading">Answered so far</h2>
+    <div class="wall" id="wall">
+      <div class="loading">Loading...</div>
+    </div>
+
+    <footer>Built with Firebase &middot; questions are stored securely</footer>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script src="config.js"></script>
+  <script>
+    firebase.initializeApp(window.FIREBASE_CONFIG);
+    const db = firebase.firestore();
+
+    const form = document.getElementById('askForm');
+    const nameInput = document.getElementById('name');
+    const qInput = document.getElementById('question');
+    const charCount = document.getElementById('charCount');
+    const sendBtn = document.getElementById('sendBtn');
+    const toast = document.getElementById('toast');
+
+    qInput.addEventListener('input', () => {
+      charCount.textContent = `${qInput.value.length}/500`;
+    });
+
+    function showToast(msg, ok){
+      toast.textContent = msg;
+      toast.className = 'toast show ' + (ok ? 'ok' : 'err');
+      setTimeout(() => toast.classList.remove('show'), 4000);
+    }
+
+    function canSendNow(){
+      const last = Number(localStorage.getItem('lastAsk') || 0);
+      return Date.now() - last > 15000;
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const question = qInput.value.trim();
+      if (!question) return;
+      if (!canSendNow()){
+        showToast('Please wait a few seconds before sending again.', false);
+        return;
+      }
+      sendBtn.disabled = true;
+      try{
+        await db.collection('questions').add({
+          name: (nameInput.value.trim() || 'Anonymous').slice(0, 30),
+          question: question.slice(0, 500),
+          answer: null,
+          status: 'pending',
+          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+          answeredAt: null
+        });
+        localStorage.setItem('lastAsk', String(Date.now()));
+        form.reset();
+        charCount.textContent = '0/500';
+        showToast('Sent! Thanks for sharing.', true);
+      }catch(err){
+        console.error(err);
+        showToast('Something went wrong, please try again.', false);
+      }finally{
+        sendBtn.disabled = false;
+      }
+    });
+
+    const wall = document.getElementById('wall');
+    db.collection('questions')
+      .where('status', '==', 'answered')
+      .orderBy('answeredAt', 'desc')
+      .limit(50)
+      .onSnapshot((snap) => {
+        if (snap.empty){
+          wall.innerHTML = '<div class="empty">Nothing answered yet. Be the first to share!</div>';
+          return;
+        }
+        wall.innerHTML = '';
+        snap.forEach((doc) => {
+          const d = doc.data();
+          const el = document.createElement('div');
+          el.className = 'entry';
+          el.innerHTML = `
+            <div class="e-name">${escapeHtml(d.name || 'Anonymous')}</div>
+            <p class="e-q">${escapeHtml(d.question || '')}</p>
+            <p class="e-a">${escapeHtml(d.answer || '')}</p>
+          `;
+          wall.appendChild(el);
+        });
+      }, (err) => {
+        console.error(err);
+        wall.innerHTML = '<div class="empty">Could not load the wall. Try refreshing.</div>';
+      });
+
+    function escapeHtml(str){
+      const div = document.createElement('div');
+      div.textContent = str;
+      return div.innerHTML;
+    }
+  </script>
+</body>
+</html>

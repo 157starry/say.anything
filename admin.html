@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Admin — Ask Tarry</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,wght@0,600;0,700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --stone:#E9E6DF; --ink:#24221E; --sage:#3F6259; --bronze:#8B7355;
+    --card:#FBFAF7; --line: rgba(36,34,30,0.12);
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--stone);color:var(--ink);font-family:'IBM Plex Sans',sans-serif;min-height:100vh;}
+  .wrap{max-width:680px;margin:0 auto;padding:2.5rem 1.25rem 4rem;}
+  h1{font-family:'Newsreader',serif;font-weight:700;font-size:1.9rem;margin:0 0 .3rem;}
+  .sub{color:#5c584f;margin:0 0 2rem;}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:1.4rem;margin-bottom:1.1rem;}
+  label{display:block;font-size:.82rem;font-weight:600;margin-bottom:.4rem;}
+  input[type=email], input[type=password], textarea{
+    width:100%;border:1.5px solid var(--line);border-radius:8px;padding:.7rem .85rem;
+    font-family:'IBM Plex Sans';font-size:1rem;background:#FFFFFF;color:var(--ink);
+  }
+  input:focus, textarea:focus{outline:none;border-color:var(--sage);}
+  .field{margin-bottom:1rem;}
+  button{
+    appearance:none;border:none;cursor:pointer;background:var(--ink);color:var(--card);
+    font-family:'IBM Plex Sans';font-weight:600;font-size:.95rem;padding:.65rem 1.3rem;border-radius:8px;
+  }
+  button:hover{background:var(--sage);}
+  button.ghost{background:transparent;color:var(--ink);border:1.5px solid var(--line);}
+  button.small{padding:.45rem .9rem;font-size:.85rem;}
+  button:disabled{opacity:.5;cursor:not-allowed;}
+  .err{color:#8A3B26;font-size:.88rem;margin-top:.6rem;}
+  #loginView{max-width:380px;margin:4rem auto 0;}
+  #appView{display:none;}
+  .topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:2rem;}
+  .badge{background:var(--sage);color:var(--card);border-radius:999px;padding:.2rem .7rem;font-size:.78rem;font-weight:600;}
+  .tag{font-size:.74rem;font-weight:600;letter-spacing:.02em;text-transform:uppercase;padding:.15rem .55rem;border-radius:6px;}
+  .tag.pending{background:#F0E7DC;color:#7A5A2E;}
+  .tag.answered{background:#E7EFEA;color:#2C4A41;}
+  .q-name{font-size:.8rem;color:#8f8b80;margin-bottom:.3rem;}
+  .q-text{font-weight:500;font-family:'Newsreader',serif;font-size:1.05rem;margin:0 0 .8rem;line-height:1.4;}
+  .ans-existing{background:#F4F2EC;border-left:3px solid var(--bronze);padding:.6rem .8rem;border-radius:6px;font-size:.92rem;margin-bottom:.7rem;}
+  .row-end{display:flex;justify-content:flex-end;gap:.6rem;margin-top:.7rem;}
+  .empty{color:#8f8b80;text-align:center;padding:2rem 0;}
+  .section-title{font-size:1rem;font-weight:600;margin:2rem 0 1rem;font-family:'Newsreader',serif;}
+</style>
+</head>
+<body>
+  <div class="wrap">
+
+    <div id="loginView">
+      <h1>Sign in</h1>
+      <p class="sub">This page is just for answering incoming questions.</p>
+      <form class="card" id="loginForm">
+        <div class="field">
+          <label for="email">Email</label>
+          <input type="email" id="email" required autocomplete="username" />
+        </div>
+        <div class="field">
+          <label for="password">Password</label>
+          <input type="password" id="password" required autocomplete="current-password" />
+        </div>
+        <button type="submit">Sign in</button>
+        <div class="err" id="loginErr"></div>
+      </form>
+    </div>
+
+    <div id="appView">
+      <div class="topbar">
+        <div>
+          <h1>Inbox</h1>
+          <p class="sub" style="margin:0">Signed in as <span class="badge" id="whoami"></span></p>
+        </div>
+        <button class="ghost small" id="logoutBtn">Sign out</button>
+      </div>
+
+      <div class="section-title">Unanswered</div>
+      <div id="pendingList"><div class="empty">Loading...</div></div>
+
+      <div class="section-title">Answered</div>
+      <div id="answeredList"><div class="empty">Loading...</div></div>
+    </div>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script src="config.js"></script>
+  <script>
+    firebase.initializeApp(window.FIREBASE_CONFIG);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    const loginView = document.getElementById('loginView');
+    const appView = document.getElementById('appView');
+    const loginForm = document.getElementById('loginForm');
+    const loginErr = document.getElementById('loginErr');
+
+    loginForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      loginErr.textContent = '';
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+      try{
+        await auth.signInWithEmailAndPassword(email, password);
+      }catch(err){
+        loginErr.textContent = 'Wrong email or password.';
+      }
+    });
+
+    document.getElementById('logoutBtn').addEventListener('click', () => auth.signOut());
+
+    let unsubPending = null, unsubAnswered = null;
+
+    auth.onAuthStateChanged((user) => {
+      if (user){
+        loginView.style.display = 'none';
+        appView.style.display = 'block';
+        document.getElementById('whoami').textContent = user.email;
+        listenPending();
+        listenAnswered();
+      } else {
+        loginView.style.display = 'block';
+        appView.style.display = 'none';
+        if (unsubPending) unsubPending();
+        if (unsubAnswered) unsubAnswered();
+      }
+    });
+
+    function escapeHtml(str){
+      const div = document.createElement('div');
+      div.textContent = str || '';
+      return div.innerHTML;
+    }
+
+    function listenPending(){
+      unsubPending = db.collection('questions')
+        .where('status', '==', 'pending')
+        .orderBy('createdAt', 'asc')
+        .onSnapshot((snap) => {
+          const list = document.getElementById('pendingList');
+          if (snap.empty){
+            list.innerHTML = '<div class="empty">No new questions.</div>';
+            return;
+          }
+          list.innerHTML = '';
+          snap.forEach((doc) => {
+            const d = doc.data();
+            const el = document.createElement('div');
+            el.className = 'card';
+            el.innerHTML = `
+              <span class="tag pending">Unanswered</span>
+              <div class="q-name" style="margin-top:.5rem">${escapeHtml(d.name || 'Anonymous')}</div>
+              <p class="q-text">${escapeHtml(d.question)}</p>
+              <div class="field">
+                <textarea rows="3" placeholder="Write your answer..." data-id="${doc.id}"></textarea>
+              </div>
+              <div class="row-end">
+                <button class="small answer-btn" data-id="${doc.id}">Post answer</button>
+              </div>
+            `;
+            list.appendChild(el);
+          });
+          list.querySelectorAll('.answer-btn').forEach((btn) => {
+            btn.addEventListener('click', async () => {
+              const id = btn.dataset.id;
+              const ta = list.querySelector(`textarea[data-id="${id}"]`);
+              const answer = ta.value.trim();
+              if (!answer) return;
+              btn.disabled = true;
+              try{
+                await db.collection('questions').doc(id).update({
+                  answer: answer.slice(0, 1000),
+                  status: 'answered',
+                  answeredAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+              }catch(err){
+                console.error(err);
+                alert('Could not save the answer, please try again.');
+                btn.disabled = false;
+              }
+            });
+          });
+        });
+    }
+
+    function listenAnswered(){
+      unsubAnswered = db.collection('questions')
+        .where('status', '==', 'answered')
+        .orderBy('answeredAt', 'desc')
+        .limit(100)
+        .onSnapshot((snap) => {
+          const list = document.getElementById('answeredList');
+          if (snap.empty){
+            list.innerHTML = '<div class="empty">Nothing answered yet.</div>';
+            return;
+          }
+          list.innerHTML = '';
+          snap.forEach((doc) => {
+            const d = doc.data();
+            const el = document.createElement('div');
+            el.className = 'card';
+            el.innerHTML = `
+              <span class="tag answered">Answered</span>
+              <div class="q-name" style="margin-top:.5rem">${escapeHtml(d.name || 'Anonymous')}</div>
+              <p class="q-text">${escapeHtml(d.question)}</p>
+              <div class="ans-existing">${escapeHtml(d.answer)}</div>
+              <div class="row-end">
+                <button class="ghost small delete-btn" data-id="${doc.id}">Delete</button>
+              </div>
+            `;
+            list.appendChild(el);
+          });
+          list.querySelectorAll('.delete-btn').forEach((btn) => {
+            btn.addEventListener('click', async () => {
+              if (!confirm('Remove this Q&A from the public wall?')) return;
+              try{
+                await db.collection('questions').doc(btn.dataset.id).delete();
+              }catch(err){
+                console.error(err);
+                alert('Could not delete, please try again.');
+              }
+            });
+          });
+        });
+    }
+  </script>
+</body>
+</html>
